@@ -1,8 +1,16 @@
+# Assuming you have this in your hashmap.py:
+# class Variables(Enum):
+#     SEED = 0
+#     ALTITUDE = 1
+#     ERROR = 2
+
+# Your server code
 import socket
 import struct
 import time
 import csv
 import keyboard  # Library for detecting key presses
+from hashmap import Variables
 
 HOST = '0.0.0.0'  # Listen on all available network interfaces
 PORT = 5000       # Port number matching the ESP32 code
@@ -26,7 +34,7 @@ def start_server():
                 conn, addr = server_socket.accept()
                 with conn:
                     print(f"Connected by {addr}")
-                    
+
                     # Set a timeout for recv to detect connection loss
                     conn.settimeout(1.0)
 
@@ -40,7 +48,7 @@ def start_server():
                                 print(f"Client {addr} disconnected")
                                 break  # Client disconnected
 
-                            # Unpack the data (assuming each value is a 16-bit unsigned integer)
+                            # Unpack the data (assuming each value is a 16-bit signed integer)
                             values = struct.unpack('<5h', data)
                             print("Received data:", values)
 
@@ -49,7 +57,7 @@ def start_server():
 
                             # Check if the "k" key is pressed to send a response
                             if keyboard.is_pressed("k"):
-                                response = "Data received\n"  # Message with newline for Arduino/ESP32 to detect end
+                                response = f"SEED: {Variables.SPEED.value}, ALTITUDE: {Variables.ALTITUDE.value}\n"
                                 conn.sendall(response.encode())
                                 print("Sent to client:", response.strip())
 
