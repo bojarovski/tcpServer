@@ -1,0 +1,2 @@
+1. Do we need to save data if we lose conecciton to store them in buffer (potentional delay in real time showing)
+2.

@@ -15,7 +15,13 @@ from hashmap import Variables
 HOST = '0.0.0.0'  # Listen on all available network interfaces
 PORT = 5000       # Port number matching the ESP32 code
 PACKET_SIZE = 10  # 5 values * 2 bytes (16 bits each)
-ids = [1, 2, 3]
+ids = [0, 2, 3]
+config = [[0, 255], [1, 1]]  # Here values can range from 0 to 65535
+
+# Function to convert an integer to a 2-byte representation
+def int_to_bytes(value):
+    return value.to_bytes(2, byteorder='big')
+
 def start_server():
     # Open CSV file for appending data
     with open("received_data.csv", mode="a", newline="") as csv_file:
@@ -38,6 +44,12 @@ def start_server():
                     # Set a timeout for recv to detect connection loss
                     conn.settimeout(1.0)
 
+                    #CONFIG: IDS
+                    packet = b's' + bytes(ids) + b'\n'
+                    # Send the entire packet
+                    conn.sendall(packet)
+                    print(f"Config variables are: {ids}")
+                    
                     while True:
                         start_time = time.time()  # Capture start time for 20 Hz timing
 
@@ -57,16 +69,20 @@ def start_server():
 
                             # Check if the "k" key is pressed to send a response
                             if keyboard.is_pressed("k"):
-                            # Sending a single byte with the value of 1
-                                packet = bytes([1]) + bytes(ids)
+                            # Start the packet with the byte 'C'
+                                packet = b'c'
+
+                                # Add each [ID, Value] pair to the packet
+                                for id_val in config:
+                                    id_byte = bytes([id_val[0]])  # Convert ID to a single byte
+                                    value_bytes = int_to_bytes(id_val[1])  # Convert Value to two bytes
+                                    packet += id_byte + value_bytes  # Append ID and Value bytes
+
+                                # Append a newline byte at the end of the packet
+                                packet += b'\n'
+                                
                                 # Send the entire packet
                                 conn.sendall(packet)
-                                
-                                # Optionally, send the formatted string as well if needed
-                                # response = f"SPEED: {Variables.SPEED.value}, ALTITUDE: {Variables.ALTITUDE.value}\n"
-                                # conn.sendall(response.encode())
-                                # print("Sent to client:", response.strip())
-
                         except socket.timeout:
                             # Handle timeout (no data received within the timeout)
                             print("No data received within timeout period. Reconnecting...")
