@@ -15,12 +15,12 @@ from hashmap import Variables
 HOST = '0.0.0.0'  # Listen on all available network interfaces
 PORT = 5000       # Port number matching the ESP32 code
 PACKET_SIZE = 10  # 5 values * 2 bytes (16 bits each)
-
+ids = [1, 2, 3]
 def start_server():
     # Open CSV file for appending data
     with open("received_data.csv", mode="a", newline="") as csv_file:
         csv_writer = csv.writer(csv_file)
-        csv_writer.writerow(["Value1", "Value2", "Value3", "Value4", "Value5"])  # Header row
+        csv_writer.writerow([var.name for var in Variables])
 
         # Create a TCP socket
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
@@ -57,9 +57,15 @@ def start_server():
 
                             # Check if the "k" key is pressed to send a response
                             if keyboard.is_pressed("k"):
-                                response = f"SEED: {Variables.SPEED.value}, ALTITUDE: {Variables.ALTITUDE.value}\n"
-                                conn.sendall(response.encode())
-                                print("Sent to client:", response.strip())
+                            # Sending a single byte with the value of 1
+                                packet = bytes([1]) + bytes(ids)
+                                # Send the entire packet
+                                conn.sendall(packet)
+                                
+                                # Optionally, send the formatted string as well if needed
+                                # response = f"SPEED: {Variables.SPEED.value}, ALTITUDE: {Variables.ALTITUDE.value}\n"
+                                # conn.sendall(response.encode())
+                                # print("Sent to client:", response.strip())
 
                         except socket.timeout:
                             # Handle timeout (no data received within the timeout)
