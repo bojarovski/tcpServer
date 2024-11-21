@@ -16,7 +16,7 @@ HOST = '0.0.0.0'  # Listen on all available network interfaces
 PORT = 5000       # Port number matching the ESP32 code
 PACKET_SIZE = 10  # 5 values * 2 bytes (16 bits each)
 ids = [0, 2, 3]
-config = [[0, 255], [1, 1]]  # Here values can range from 0 to 65535
+config = [[3, 3], [1, 1]]  # Here values can range from 0 to 65535
 
 # Function to convert an integer to a 2-byte representation
 def int_to_bytes(value):
