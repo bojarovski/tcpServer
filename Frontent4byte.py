@@ -6,7 +6,7 @@ import struct
 import time
 import csv
 import keyboard
-from data_type import DataType
+from data_type import data_types
 
 app = Flask(__name__)
 CORS(app)
@@ -18,9 +18,23 @@ PACKET_SIZE = 400  # Update to 400 bytes for the packet size
 ids = [0, 2, 3]
 config = [[3, 3], [1, 1]]
 received_data = []
+chunk_size = 4
+
 
 def int_to_bytes(value):
     return value.to_bytes(2, byteorder='big')
+
+    # Function to unpack as signed int (4 bytes)
+def unpack_int(data):
+    return struct.unpack('<i', data)[0]
+
+# Function to unpack as unsigned int (4 bytes)
+def unpack_uint(data):
+    return struct.unpack('<I', data)[0]
+
+# Function to unpack as float (4 bytes)
+def unpack_float(data):
+    return struct.unpack('<f', data)[0]
 
 @app.route('/update', methods=['POST'])
 def update_config():
@@ -69,28 +83,54 @@ def start_server():
                             if not data:
                                 print(f"Client {addr} disconnected")
                                 break
-
+                            chunks = [data[i:i+chunk_size] for i in range(0, len(data), chunk_size)]
+                            
                             # Check if the received data is 400 bytes long
                             if len(data) == 400:
+                                index = 0
                                 # Assuming the packet contains 200 short integers (2 bytes each)
-                                values = struct.unpack('<200h', data)  # Adjust based on your data format
-                                print("Received data:", values)
-                                csv_writer.writerow(values)
+                                for i, chunk in enumerate(chunks):  
+                                # Accessing data_types using the same index `i`
+                                if i < len(data_types):  # Ensure the index doesn't go out of range
+                                    name, data_type = data_types[i]  # Accessing the tuple using index `i`
+                                    
+                                    print(f"Index: {i}, Name: {name}, Type: {data_type}")
+                                    
+                                    # Perform unpacking based on the data type (just an example of how you might unpack based on type)
+                                    if data_type == "int":
+                                        int_value = unpack_int(chunk)
+                                        print(f"Int Value: {int_value}")
+                                    elif data_type == "uint":
+                                        uint_value = unpack_uint(chunk)
+                                        print(f"UInt Value: {uint_value}")
+                                    elif data_type == "float":
+                                        float_value = unpack_float(chunk)
+                                        print(f"Float Value: {float_value}")
+                                    
+                                    # Print the unpacked values
+                                    # print(f"Chunk {i+1}:")
+                                    # print(f"  Int: {int_value}")
+                                    # print(f"  Unsigned Int: {uint_value}")
+                                    # print(f"  Float: {float_value}")
+                                    # print("-" * 40)  # Unpacking 100 4-byte integers  # Adjust based on your data format
+                                
+                                # print("Received data:", values)
+                                # csv_writer.writerow(values)
 
-                                received_data.append(values)
+                                # received_data.append(values)
 
                                 # Emit data to all connected clients in real-time
-                                socketio.emit('live_data', {'data': values})
+                                # socketio.emit('live_data', {'data': values})
 
                                 # Check if the "k" key is pressed to send a config update
-                                if keyboard.is_pressed("k"):
-                                    packet = b'c'
-                                    for id_val in config:
-                                        id_byte = bytes([id_val[0]])
-                                        value_bytes = int_to_bytes(id_val[1])
-                                        packet += id_byte + value_bytes
-                                    packet += b'\n'
-                                    conn.sendall(packet)
+                                # if keyboard.is_pressed("k"):
+                                #     packet = b'c'
+                                #     for id_val in config:
+                                #         id_byte = bytes([id_val[0]])
+                                #         value_bytes = int_to_bytes(id_val[1])
+                                #         packet += id_byte + value_bytes
+                                #     packet += b'\n'
+                                #     conn.sendall(packet)
 
                         except socket.timeout:
                             print("No data received within timeout period. Reconnecting...")
