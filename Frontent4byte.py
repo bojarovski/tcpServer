@@ -14,7 +14,7 @@ CORS(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
 HOST = '0.0.0.0'
 PORT = 5000
-PACKET_SIZE = 400  # Update to 400 bytes for the packet size
+PACKET_SIZE = 212  # Update to 400 bytes for the packet size
 ids = [0, 2, 3]
 config = [[3, 3], [1, 1]]
 received_data = []
@@ -86,27 +86,29 @@ def start_server():
                             chunks = [data[i:i+chunk_size] for i in range(0, len(data), chunk_size)]
                             
                             # Check if the received data is 400 bytes long
-                            if len(data) == 400:
+                            if len(data) == 212:
                                 index = 0
                                 # Assuming the packet contains 200 short integers (2 bytes each)
                                 for i, chunk in enumerate(chunks):  
-                                # Accessing data_types using the same index `i`
-                                if i < len(data_types):  # Ensure the index doesn't go out of range
-                                    name, data_type = data_types[i]  # Accessing the tuple using index `i`
-                                    
-                                    print(f"Index: {i}, Name: {name}, Type: {data_type}")
-                                    
-                                    # Perform unpacking based on the data type (just an example of how you might unpack based on type)
-                                    if data_type == "int":
-                                        int_value = unpack_int(chunk)
-                                        print(f"Int Value: {int_value}")
-                                    elif data_type == "uint":
-                                        uint_value = unpack_uint(chunk)
-                                        print(f"UInt Value: {uint_value}")
-                                    elif data_type == "float":
-                                        float_value = unpack_float(chunk)
-                                        print(f"Float Value: {float_value}")
-                                    
+                                 # Accessing data_types using the same index `i`
+                                    if i < len(data_types):  # Ensure the index doesn't go out of range
+                                        name, data_type = data_types[i]  # Accessing the tuple using index `i`
+                                        
+                                        print(f"Index: {i}, Name: {name}, Type: {data_type}")
+                                        values = {"name": name}
+                                        # Perform unpacking based on the data type (just an example of how you might unpack based on type)
+                                        if data_type == "int":
+                                            int_value = unpack_int(chunk)
+                                            values["value"] = int_value
+                                        elif data_type == "uint":
+                                            uint_value = unpack_uint(chunk)
+                                            values["value"] = uint_value
+                                        elif data_type == "float":
+                                            float_value = unpack_float(chunk)
+                                            values["value"] = float_value
+
+                                    csv_writer.writerow([name, values["value"]])
+                                    received_data.append(values)
                                     # Print the unpacked values
                                     # print(f"Chunk {i+1}:")
                                     # print(f"  Int: {int_value}")
