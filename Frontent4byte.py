@@ -10,8 +10,8 @@ from data_type import data_types
 
 app = Flask(__name__)
 CORS(app)
-# socketio = SocketIO(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
+
 HOST = '0.0.0.0'
 PORT = 5000
 PACKET_SIZE = 212  # Update to 400 bytes for the packet size
@@ -20,11 +20,10 @@ config = [[3, 3], [1, 1]]
 received_data = []
 chunk_size = 4
 
-
 def int_to_bytes(value):
     return value.to_bytes(2, byteorder='big')
 
-    # Function to unpack as signed int (4 bytes)
+# Function to unpack as signed int (4 bytes)
 def unpack_int(data):
     return struct.unpack('<i', data)[0]
 
@@ -57,7 +56,10 @@ def get_received_data():
 def start_server():
     with open("received_data.csv", mode="a", newline="") as csv_file:
         csv_writer = csv.writer(csv_file)
-        # csv_writer.writerow([var.name for var in Variables])
+
+        # Write the header row dynamically based on the data_types
+        header = [name for name, _ in data_types]  # Extract variable names
+        csv_writer.writerow(header)
 
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
             server_socket.bind((HOST, PORT))
@@ -78,61 +80,48 @@ def start_server():
                     while True:
                         start_time = time.time()
                         try:
-                            # Receive 400 bytes from the client
-                            data = conn.recv(PACKET_SIZE)  # Receive a 400-byte packet
+                            # Receive data
+                            data = conn.recv(PACKET_SIZE)
                             if not data:
                                 print(f"Client {addr} disconnected")
                                 break
-                            chunks = [data[i:i+chunk_size] for i in range(0, len(data), chunk_size)]
-                            
-                            # Check if the received data is 400 bytes long
-                            if len(data) == 212:
-                                index = 0
-                                # Assuming the packet contains 200 short integers (2 bytes each)
-                                for i, chunk in enumerate(chunks):  
-                                 # Accessing data_types using the same index `i`
+                            chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
+
+                            if len(data) == 212:  # Check if packet is 212 bytes long
+                                row = []
+
+                                # Process each chunk
+                                for i, chunk in enumerate(chunks):
                                     if i < len(data_types):  # Ensure the index doesn't go out of range
-                                        name, data_type = data_types[i]  # Accessing the tuple using index `i`
-                                        
-                                        print(f"Index: {i}, Name: {name}, Type: {data_type}")
+                                        name, data_type = data_types[i]  # Get the name and data type
                                         values = {"name": name}
-                                        # Perform unpacking based on the data type (just an example of how you might unpack based on type)
+
+                                        # Perform unpacking based on the data type
                                         if data_type == "int":
-                                            int_value = unpack_int(chunk)
-                                            values["value"] = int_value
+                                            values["value"] = unpack_int(chunk)
                                         elif data_type == "uint":
-                                            uint_value = unpack_uint(chunk)
-                                            values["value"] = uint_value
+                                            values["value"] = unpack_uint(chunk)
                                         elif data_type == "float":
-                                            float_value = unpack_float(chunk)
-                                            values["value"] = float_value
+                                            values["value"] = unpack_float(chunk)
 
-                                    csv_writer.writerow([name, values["value"]])
-                                    received_data.append(values)
-                                    # Print the unpacked values
-                                    # print(f"Chunk {i+1}:")
-                                    # print(f"  Int: {int_value}")
-                                    # print(f"  Unsigned Int: {uint_value}")
-                                    # print(f"  Float: {float_value}")
-                                    # print("-" * 40)  # Unpacking 100 4-byte integers  # Adjust based on your data format
-                                
-                                # print("Received data:", values)
-                                # csv_writer.writerow(values)
+                                        # Add the unpacked value to the row in the order of header
+                                        row.append(values["value"])
+                                        # print(f"{name}")
+                                        if name == "ACC_ROLL":
+                                            print(f"Roll: {values['value']}")
+                                        elif name == "ACC_YAW":
+                                            print(f"Yaw: {values['value']}")
+                                        elif name == "ACC_PITCH":
+                                            print(f"Pitch: {values['value']}")
 
-                                # received_data.append(values)
+                                # Write the processed row to the CSV
+                                csv_writer.writerow(row)
 
-                                # Emit data to all connected clients in real-time
-                                # socketio.emit('live_data', {'data': values})
+                                # Store the processed data into the received_data list
+                                received_data.append({name: row[i] for i, (name, _) in enumerate(data_types)})
 
-                                # Check if the "k" key is pressed to send a config update
-                                # if keyboard.is_pressed("k"):
-                                #     packet = b'c'
-                                #     for id_val in config:
-                                #         id_byte = bytes([id_val[0]])
-                                #         value_bytes = int_to_bytes(id_val[1])
-                                #         packet += id_byte + value_bytes
-                                #     packet += b'\n'
-                                #     conn.sendall(packet)
+                                # Emit the data to all connected clients in real-time
+                                socketio.emit('live_data', {'data': {name: row[i] for i, (name, _) in enumerate(data_types)}})
 
                         except socket.timeout:
                             print("No data received within timeout period. Reconnecting...")

@@ -1,59 +1,33 @@
-import socket
 import struct
-import time
 
-HOST = '0.0.0.0'  # Listen on all available network interfaces
-PORT = 5000       # Port number matching the ESP32 code
-PACKET_SIZE = 10  # 100 variables * 2 bytes (16 bits each)
+# Your data packet (received data)
+data = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xc3\xf5(@V\x00\x00=a\x00\x92<\x9d\xe0j?\x00\x1c\x869@\xbb\\\xb9\x80\x88\x809\x00\x00\x00\x00O\xbf\xfd\xbfN\xb8\x88?\x00\x00\x00\x00\xa5\x00\x00\x00\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xf7\n\xb9\xc9\x00\x00\x00\x00\x03:\x10K\xd5\xdal\xc6\xa5\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\xbf\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00q=\x1eA\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80?\x00\x00\x80?\xcd\xccL>\xcd\xcc\xcc=\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80\xbf\x00\x00\xc0?\xcd\xccL>\xcd\xcc\xcc=\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x80?\x00\x00\x80?\x00\x00\x00\x00\xcd\xcc\xcc=\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5\xa5xM\x08@@7\r@0\x00\x05\x00\x00\x00\x00\x00\xd0I\xfb?\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xd8\x80\xf9?\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 
-def start_server():
-    # Create a TCP socket
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server_socket:
-        server_socket.bind((HOST, PORT))
-        server_socket.listen()
-        print(f"Server listening on {HOST}:{PORT}")
+# Function to unpack as signed int (4 bytes)
+def unpack_int(data):
+    return struct.unpack('<i', data)[0]
 
-        while True:
-            # Wait for a client connection
-            print("Waiting for a new client connection...")
-            conn, addr = server_socket.accept()
-            with conn:
-                print(f"Connected by {addr}")
-                all_data = []
-                
-                # Set a timeout for recv to detect connection loss
-                conn.settimeout(1.0)
+# Function to unpack as unsigned int (4 bytes)
+def unpack_uint(data):
+    return struct.unpack('<I', data)[0]
 
-                while True:
-                    start_time = time.time()  # Capture start time for 20 Hz timing
+# Function to unpack as float (4 bytes)
+def unpack_float(data):
+    return struct.unpack('<f', data)[0]
 
-                    try:
-                        # Receive the packet
-                        data = conn.recv(PACKET_SIZE)
-                        if not data:
-                            print(f"Client {addr} disconnected")
-                            break  # Client disconnected
+# Break the data into 4-byte chunks
+chunk_size = 4
+chunks = [data[i:i+chunk_size] for i in range(0, len(data), chunk_size)]
 
-                        # Unpack the data (assuming each value is a 16-bit unsigned integer)
-                        values = struct.unpack('<5h', data)
-                        all_data.append(values)
-                        print("Received data:", values)
-
-                    except socket.timeout:
-                        # Handle timeout (no data received within the timeout)
-                        print("No data received within timeout period. Reconnecting...")
-                        break  # Exit the inner loop to accept a new connection
-
-                    except socket.error as e:
-                        print(f"Socket error: {e}")
-                        break
-
-                    # Maintain a fixed 20 Hz rate
-                    elapsed_time = time.time() - start_time
-                    time_to_wait = max(0, 0.05 - elapsed_time)  # 0.05 sec (50 ms) for 20 Hz
-                    time.sleep(time_to_wait)
-
-                print("All received data:", all_data)
-
-if __name__ == "__main__":
-    start_server()
+# Loop through each chunk and unpack them
+for i, chunk in enumerate(chunks):
+    int_value = unpack_int(chunk)
+    uint_value = unpack_uint(chunk)
+    float_value = unpack_float(chunk)
+    
+    # Print the unpacked values
+    print(f"Chunk {i+1}:")
+    print(f"  Int: {int_value}")
+    print(f"  Unsigned Int: {uint_value}")
+    print(f"  Float: {float_value}")
+    print("-" * 40)
