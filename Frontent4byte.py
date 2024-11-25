@@ -15,8 +15,6 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 HOST = '0.0.0.0'
 PORT = 5000
 PACKET_SIZE = 212
-ids = [0, 2, 3]
-config = [[3, 3], [1, 1]]
 received_data = []
 chunk_size = 4
 

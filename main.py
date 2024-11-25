@@ -121,6 +121,9 @@ def client_handler(conn, addr):
     conn.settimeout(1.0)
 
     with conn:
+        packet = b's'
+        conn.sendall(packet)
+        print(f"Request a value of variables")
         while True:
             try:
                 data = conn.recv(PACKET_SIZE)

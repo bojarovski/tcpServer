@@ -57,8 +57,8 @@ def start_server():
                     print(f"Connected by {addr}")
                     conn.settimeout(1.0)
 
-                    packet = b's' + bytes(ids) + b'\n'
-                    conn.sendall(packet)
+                        packet = b's' + bytes(ids) + b'\n'
+                        conn.sendall(packet)
                     print(f"Config variables are: {ids}")
 
                     while True:
