@@ -14,7 +14,7 @@ socketio = SocketIO(app, cors_allowed_origins="*")
 
 HOST = '0.0.0.0'
 PORT = 5000
-PACKET_SIZE = 212  # Update to 400 bytes for the packet size
+PACKET_SIZE = 212
 ids = [0, 2, 3]
 config = [[3, 3], [1, 1]]
 received_data = []
@@ -76,7 +76,7 @@ def start_server():
                     packet = b's' + bytes(ids) + b'\n'
                     conn.sendall(packet)
                     print(f"Config variables are: {ids}")
-
+                    index = 0
                     while True:
                         start_time = time.time()
                         try:
@@ -87,7 +87,7 @@ def start_server():
                                 break
                             chunks = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
 
-                            if len(data) == 212:  # Check if packet is 212 bytes long
+                            if len(data) == PACKET_SIZE:  # Check if packet is 212 bytes long
                                 row = []
 
                                 # Process each chunk
@@ -107,22 +107,19 @@ def start_server():
                                         # Add the unpacked value to the row in the order of header
                                         row.append(values["value"])
                                         # print(f"{name}")
-                                        if name == "ACC_ROLL":
-                                            print(f"Roll: {values['value']}")
-                                        elif name == "ACC_YAW":
-                                            print(f"Yaw: {values['value']}")
-                                        elif name == "ACC_PITCH":
-                                            print(f"Pitch: {values['value']}")
+                                        
 
                                 # Write the processed row to the CSV
                                 csv_writer.writerow(row)
 
                                 # Store the processed data into the received_data list
                                 received_data.append({name: row[i] for i, (name, _) in enumerate(data_types)})
+                                # print(received_data)
 
                                 # Emit the data to all connected clients in real-time
                                 socketio.emit('live_data', {'data': {name: row[i] for i, (name, _) in enumerate(data_types)}})
-
+                                index += 1
+                                print(index)
                         except socket.timeout:
                             print("No data received within timeout period. Reconnecting...")
                             break
