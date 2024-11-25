@@ -37,18 +37,32 @@ def unpack_float(data):
 
 @app.route('/update', methods=['POST'])
 def update_config():
-    global config
-    data = request.json
-    variable_id = data.get('id')
-    new_value = data.get('value')
-
-    if variable_id is not None and new_value is not None:
-        for entry in config:
-            if entry[0] == variable_id:
-                entry[1] = new_value
-                break
-    return jsonify({"message": "Config updated", "config": config})
-
+    global server_socket  # Ensure the socket is available
+    try:
+        conn, addr = server_socket.accept()
+        print(f"Accepted connection from {addr}")
+        
+        # Placeholder for your global config
+        global config  
+        
+        data = request.json
+        print(data)
+        
+        # Process your data (uncomment and modify as needed)
+        # variable_id = data.get('id')
+        # new_value = data.get('value')
+        # variable_id_bytes = struct.pack('>I', variable_id)[-3:]  # Take the last 3 bytes
+        # new_value_bytes = struct.pack('>I', new_value)  # Pack as 4 bytes
+        
+        # Construct the packet
+        packet = b'c'  # Placeholder for your packet construction
+        # + variable_id_bytes + b'i' + new_value_bytes
+        
+        conn.sendall(packet)
+        conn.close()  # Close the connection
+        
+        return jsonify({"message": "Config updated", "config": packet.decode('utf-8')})
+    
 @app.route('/data', methods=['GET'])
 def get_received_data():
     return jsonify(received_data)
@@ -73,10 +87,7 @@ def start_server():
                     print(f"Connected by {addr}")
                     conn.settimeout(1.0)
 
-                    packet = b's' + bytes(ids) + b'\n'
-                    conn.sendall(packet)
-                    print(f"Config variables are: {ids}")
-                    index = 0
+                    # index = 0
                     while True:
                         start_time = time.time()
                         try:
@@ -118,8 +129,8 @@ def start_server():
 
                                 # Emit the data to all connected clients in real-time
                                 socketio.emit('live_data', {'data': {name: row[i] for i, (name, _) in enumerate(data_types)}})
-                                index += 1
-                                print(index)
+                                # index += 1
+                                # print(index)
                         except socket.timeout:
                             print("No data received within timeout period. Reconnecting...")
                             break
