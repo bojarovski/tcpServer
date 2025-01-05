@@ -165,6 +165,42 @@ def update_config():
             data[1] = ord('\n') 
             send_packet(data)
         
+        if config["type"] == "C":
+            print(f"MARIO +++ Received config update: {config}")
+        
+            # Create a bytearray of 250 bytes (as an example, initial filled with 0)
+            data = bytearray([i % 256 for i in range(250)])
+
+            # Set the first byte to the packet type (ord('C'))
+            data[0] = ord('C')
+            
+            # Convert ID to 2 bytes and set the second and third bytes
+            packet_id = int(config["body"]["id"])
+            print(packet_id)
+            data[1:3] = struct.pack('!H', packet_id)  # 2-byte unsigned short for ID
+
+            # Set the type byte (for example, 'i' -> ord('i'), 'u' -> ord('u'), etc.)
+
+            # Depending on the type, we need to convert the value to bytes
+            value = config["body"]["value"]
+            if config["body"]["type"] == "int":  # Integer type
+                data[3] = ord('i')
+                data[4:8] = struct.pack('<i', int(value))  # 4-byte integer
+            elif config["body"]["type"] == "unsigned int":
+                data[3] = ord('u')  # Unsigned integer type
+                data[4:8] = struct.pack('<I', int(value))  # 4-byte unsigned integer
+            elif config["body"]["type"] == "float":  # Float type
+                data[3] = ord('f')
+                data[4:8] = struct.pack('<f', float(value))  # 4-byte float
+            else:
+                raise ValueError(f"Unsupported type: {config['body']['type']}")
+
+            # Set the last byte as the delimiter (newline character '\n')
+            data[8] = ord('\n')
+            print(data)
+            # Send the packet
+            send_packet(data)
+        
         return jsonify({"message": "Config updated successfully"}), 200
     except Exception as e:
         return jsonify({"error": f"An error occurred: {str(e)}"}), 500
