@@ -23,7 +23,7 @@ received_data = []
 serial_port = 'COM3'
 baud_rate = 115200
 serial_connection = None
-
+ser = serial.Serial(serial_port, baud_rate, timeout=0.01)
 # Data types for decoding
 
 # Helper functions for unpacking data
@@ -53,9 +53,9 @@ def create_packet(data):
     packet.extend([END_BYTE, END_BYTE, END_BYTE, END_BYTE])
     return packet
 
-def send_packet(serial_port, data):
+def send_packet(data):
     packet = create_packet(data)
-    serial_port.write(packet)
+    ser.write(packet)
     print(f"Sent packet: {packet}")
 
 # Process data from the buffer
@@ -82,26 +82,30 @@ def process_buffer(buffer):
         second_int = payload[1]  # Convert second byte to integer
         print(first_char)
         print(second_int)
-
         # Decode remaining bytes using data_types
         remaining_payload = payload[2:]
         # Decode data
-        chunks = [remaining_payload[j:j + chunk_size] for j in range(0, len(remaining_payload), chunk_size)]
-        row = []
-        for k, chunk in enumerate(chunks):
-            if k < len(data_types):
-                name, data_type = data_types[k]
-                value = None
-                if data_type == "int":
-                    value = unpack_int(chunk)
-                elif data_type == "uint":
-                    value = unpack_uint(chunk)
-                elif data_type == "float":
-                    value = unpack_float(chunk)
-                row.append(value)
-
+        if first_char == "T":
+            chunks = [remaining_payload[j:j + chunk_size] for j in range(0, len(remaining_payload), chunk_size)]
+            row = []
+            for k, chunk in enumerate(chunks):
+                if k < len(data_types):
+                    name, data_type = data_types[k]
+                    value = None
+                    if data_type == "int":
+                        value = unpack_int(chunk)
+                    elif data_type == "uint":
+                        value = unpack_uint(chunk)
+                    elif data_type == "float":
+                        value = unpack_float(chunk)
+                    row.append(value)
         received_data.append({name: row[m] for m, (name, _) in enumerate(data_types)})
         socketio.emit('live_data', {'data': {name: row[m] for m, (name, _) in enumerate(data_types)}})
+        if first_char == "C":
+            print("C")
+        if first_char == "S":
+            print("S")
+            # socketio.emit('config_variables', {'data': {name: row[m] for m, (name, _) in enumerate(data_types)}})
         del buffer[:i + 259]
 
 # Serial data receiver thread
@@ -126,9 +130,21 @@ def get_received_data():
 # Flask route to update configuration
 @app.route('/update', methods=['POST'])
 def update_config():
-    config = request.json
-    print(f"Received config update: {config}")
-    return jsonify({"message": "Config updated successfully"}), 200
+    try:
+        config = request.json
+        if not config or "type" not in config:
+            return jsonify({"error": "Invalid config data or 'type' key missing"}), 400
+
+        if config["type"] == "S":
+            print(f"Received config update: {config}")
+            data = bytearray([i % 256 for i in range(250)])
+            data[0] = ord('S')
+            data[1] = ord('\n') 
+            send_packet(data)
+        
+        return jsonify({"message": "Config updated successfully"}), 200
+    except Exception as e:
+        return jsonify({"error": f"An error occurred: {str(e)}"}), 500
 
 # Start the serial reading and processing
 def main():
@@ -152,7 +168,7 @@ def connect_to_serial():
     global serial_connection
     while serial_connection is None:
         try:
-            serial_connection = serial.Serial(serial_port, baud_rate, timeout=1)
+            serial_connection = ser
         except serial.SerialException as e:
             print(f"Failed to connect to the serial port: {e}")
             time.sleep(5)
